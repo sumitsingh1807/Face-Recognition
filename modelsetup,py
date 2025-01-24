@@ -1,0 +1,40 @@
+import pandas as pd
+from sqlalchemy import create_engine
+from surprise import Dataset, Reader
+from surprise import SVD
+from surprise.model_selection import train_test_split
+from surprise import accuracy
+
+# Database connection
+db_user = 'root'
+db_password = 'password123'
+db_host = 'localhost'
+db_name = 'smart_shopping'
+
+engine = create_engine(f'mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}')
+
+# Load the products and reviews data
+query = "SELECT id, name, rating, reviews_count FROM products WHERE rating IS NOT NULL"
+df = pd.read_sql(query, engine)
+
+# Prepare the data for collaborative filtering
+reader = Reader(rating_scale=(0, 5))
+data = Dataset.load_from_df(df[['id', 'name', 'rating']], reader)
+
+# Split into training and test sets
+trainset, testset = train_test_split(data, test_size=0.25)
+
+# Use SVD for recommendations
+model = SVD()
+model.fit(trainset)
+
+# Predict ratings
+predictions = model.test(testset)
+
+# Calculate accuracy
+accuracy.rmse(predictions)
+
+# Example recommendation for a specific product
+product_id = 'your_product_id_here'  # Replace with actual product ID
+prediction = model.predict(uid='user_id', iid=product_id)
+print(f"Predicted rating for product {product_id}: {prediction.est}")
